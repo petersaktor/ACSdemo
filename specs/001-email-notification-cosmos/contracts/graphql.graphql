@@ -1,0 +1,96 @@
+"""
+GraphQL Schema — ACSdemo Email Notification Queries
+Feature: 001-email-notification-cosmos
+Date: 2026-04-06
+"""
+
+# ─── Types ───────────────────────────────────────────────────────────────────
+
+"""
+A single entry in the status history of an email delivery report.
+Represents the delivery outcome at a specific point in time as reported by ACS.
+"""
+type DeliveryStatusEntry {
+  """The delivery status string as reported by Azure Communication Services (open value)."""
+  status: String!
+
+  """Optional human-readable detail from ACS deliveryStatusDetails.statusMessage."""
+  statusMessage: String
+
+  """The timestamp at which this status was reported by ACS (deliveryAttemptTimeStamp)."""
+  timestamp: DateTime!
+}
+
+"""
+The full lifecycle record of a single email send attempt.
+Persisted in Azure Cosmos DB, partitioned by recipientAddress.
+"""
+type EmailDeliveryReport {
+  """The ACS message ID (Cosmos DB document id)."""
+  id: ID!
+
+  """The recipient email address (Cosmos DB partition key)."""
+  recipientAddress: String!
+
+  """The sender email address."""
+  senderAddress: String!
+
+  """The most recent delivery status (open string — not validated against a fixed list)."""
+  currentStatus: String!
+
+  """The timestamp of the most recent status event."""
+  lastEventTimestamp: DateTime!
+
+  """
+  Ordered list of all status events received for this message, earliest first.
+  Used to audit the full delivery lifecycle.
+  """
+  statusHistory: [DeliveryStatusEntry!]!
+}
+
+"""
+Paginated result set for delivery reports by recipient.
+`hasNextPage` is computed as `items.Count == take`; no separate count query is issued (YAGNI/Principle VI).
+"""
+type EmailDeliveryReportConnection {
+  """The current page of results."""
+  items: [EmailDeliveryReport!]!
+
+  """
+  True if more pages are available after this one.
+  Computed as: the number of returned items equals the requested `take` value.
+  """
+  hasNextPage: Boolean!
+}
+
+# ─── Queries ─────────────────────────────────────────────────────────────────
+
+type Query {
+  """
+  Retrieve a single email delivery report by its ACS message ID.
+  Returns null if no report with that ID has been recorded.
+
+  Maps to: GetEmailDeliveryReportByIdQuery (Application/Queries/GetEmailDeliveryReports.cs)
+  """
+  emailDeliveryReport(
+    """The ACS-assigned message ID (GUID string)."""
+    messageId: ID!
+  ): EmailDeliveryReport
+
+  """
+  Retrieve all email delivery reports for a given recipient address,
+  ordered most-recent-first, with offset/limit pagination (default page size: 20).
+
+  Maps to: GetEmailDeliveryReportsByRecipientQuery (Application/Queries/GetEmailDeliveryReports.cs)
+  """
+  emailDeliveryReportsByRecipient(
+    """The recipient email address to filter by."""
+    recipientAddress: String!
+
+    """Number of records to skip (zero-based offset). Default: 0."""
+    skip: Int = 0
+
+    """Maximum number of records to return. Default: 20. Maximum: 100."""
+    take: Int = 20
+  ): EmailDeliveryReportConnection!
+}

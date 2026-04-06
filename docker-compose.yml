@@ -1,0 +1,36 @@
+﻿version: "3.9"
+
+services:
+  acsdemo-api:
+    image: acsdemo-api
+    build:
+      context: .
+      dockerfile: src/ACSdemo.Api/Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    depends_on:
+      - redis
+
+  acsdemo-api-dapr:
+    image: "daprio/daprd:1.14.0"
+    command: [
+      "./daprd",
+      "-app-id", "acsdemo-api",
+      "-app-port", "8080",
+      "-dapr-http-port", "3500",
+      "-dapr-grpc-port", "50001",
+      "--resources-path", "/components"
+    ]
+    volumes:
+      - "./dapr/components/:/components"
+    depends_on:
+      - acsdemo-api
+    network_mode: "service:acsdemo-api"
+
+  redis:
+    image: "redis:7-alpine"
+    ports:
+      - "6379:6379"
