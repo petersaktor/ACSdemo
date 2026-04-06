@@ -10,7 +10,7 @@ Azure Container App using **Dapr** and **Azure Communication Services (ACS)**.
 - Azure Container Apps deployment with Bicep
 
 ## Prerequisites
-- .NET 8 SDK
+- .NET 10 SDK
 - Docker Desktop
 - Dapr CLI (`dapr init`)
 - Azure CLI
